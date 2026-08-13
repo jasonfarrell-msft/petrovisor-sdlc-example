@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  review:
+  review-security:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR
