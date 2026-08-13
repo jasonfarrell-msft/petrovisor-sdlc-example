@@ -1,0 +1,69 @@
+name: Review - Azure Architect
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  copilot-requests: write
+
+concurrency:
+  group: review-azure-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Run Azure Architect review
+        id: review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -e
+          copilot --prompt "$(cat <<'PROMPT'
+          You are acting as a Senior Azure Solutions Architect reviewing this pull request (PR #${PR_NUMBER}).
+          Review any application, infrastructure-as-code (Bicep/ARM/Terraform), or configuration changes for:
+          - Use of the latest GA Azure API versions and SDKs (no deprecated services or preview-only APIs unless GA is unavailable)
+          - Alignment with the Azure Well-Architected Framework (reliability, cost, operational excellence, performance, security)
+          - Correct and least-privilege use of Managed Identity for all Azure resource access
+          - Network isolation posture (private endpoints, VNet integration, no public exposure of data services)
+          - Sensible resource naming, tagging, and scalability of the design
+          - Cost efficiency of the chosen SKUs/services for the stated workload
+
+          Output your result as a single JSON object, and nothing else, matching exactly this schema:
+          {
+            "verdict": "APPROVE" | "REQUEST_CHANGES",
+            "summary": "one paragraph overall assessment",
+            "findings": [
+              {"file": "path/to/file", "line": 0, "severity": "blocking"|"warning"|"info", "comment": "explanation and suggested fix"}
+            ]
+          }
+          Use REQUEST_CHANGES if there is at least one "blocking" finding (e.g., deprecated API, no managed identity, public endpoint
+          on a data service, hardcoded secret). Write the JSON to review-output.json.
+          PROMPT
+          )" --allow-tool write --max-ai-credits 40
+
+          cat review-output.json
+
+      - name: Post review to PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/post_persona_review.py \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --persona "Azure Architect" \
+            --input review-output.json
