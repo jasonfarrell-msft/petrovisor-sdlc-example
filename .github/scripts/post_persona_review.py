@@ -3,9 +3,11 @@
 
 Reads a JSON file produced by an AI review persona (e.g. "Security
 Specialist") and posts it as a pull request review via the GitHub REST
-API. If the persona's verdict is REQUEST_CHANGES, the review is posted
-with an event of REQUEST_CHANGES and this script exits non-zero so the
-calling workflow (and any required status check) fails.
+API. GitHub Actions' built-in token cannot approve pull requests, so an
+APPROVE verdict is posted as a COMMENT. If the persona's verdict is
+REQUEST_CHANGES, the review is posted with an event of REQUEST_CHANGES and
+this script exits non-zero so the calling workflow (and any required status
+check) fails.
 """
 
 import argparse
@@ -74,9 +76,10 @@ def post_review(repo, pr_number, persona, review):
     if not token:
         raise RuntimeError("GITHUB_TOKEN environment variable is required")
 
+    event = "COMMENT" if review["verdict"] == "APPROVE" else review["verdict"]
     payload = {
         "body": build_review_body(persona, review),
-        "event": review["verdict"],
+        "event": event,
     }
 
     url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}/reviews"
