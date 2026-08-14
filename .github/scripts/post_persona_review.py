@@ -52,9 +52,38 @@ def load_review(path, persona):
         }
     try:
         with open(path, "r") as f:
-            data = json.load(f)
+            content = f.read().strip()
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            # Copilot can prepend status text despite the output contract. Accept one
+            # complete JSON object while still rejecting malformed review content.
+            start = content.find("{")
+            if start < 0:
+                raise
+            data, end = json.JSONDecoder().raw_decode(content[start:])
+            if content[start + end:].strip():
+                raise ValueError("unexpected content after review JSON")
+        if not isinstance(data, dict):
+            raise ValueError("review JSON must be an object")
         if data.get("verdict") not in ("APPROVE", "REQUEST_CHANGES"):
             raise ValueError("missing/invalid verdict")
+        if not isinstance(data.get("summary"), str):
+            raise ValueError("missing/invalid summary")
+        findings = data.get("findings")
+        if not isinstance(findings, list):
+            raise ValueError("missing/invalid findings")
+        for finding in findings:
+            if not isinstance(finding, dict):
+                raise ValueError("finding must be an object")
+            if not isinstance(finding.get("file"), str):
+                raise ValueError("finding file must be a string")
+            if not isinstance(finding.get("line"), int) or isinstance(finding["line"], bool):
+                raise ValueError("finding line must be an integer")
+            if finding.get("severity") not in ("blocking", "warning", "info"):
+                raise ValueError("missing/invalid finding severity")
+            if not isinstance(finding.get("comment"), str):
+                raise ValueError("finding comment must be a string")
         return data
     except Exception as e:
         return {
