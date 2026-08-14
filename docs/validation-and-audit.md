@@ -14,7 +14,7 @@ The diagnostic model stores readings in these canonical units:
 | `pressure_psi` | pounds per square inch (`psi`) | `psi`, `kPa`, `bar` | `kPa * 0.145037738`; `bar * 14.5037738` |
 | `flow_rate_bpd` | barrels per day (`bpd`) | `bpd`, `bph`, `m3/day` | `bph * 24`; `m3/day * 6.28981077` |
 
-Validation fails a reading with reason code `UNKNOWN_UNIT` when a source unit is not listed above. Normalized values are rounded to two decimal places to match the generated diagnostic context payload.
+Validation fails a reading with reason code `UNKNOWN_UNIT` when a source unit is not listed above (including known aliases such as `m^3`, `M³`, `gallons`, `kilopascals`, and `m3d`). Unit labels are case-insensitive and whitespace-tolerant. Normalized values are rounded to two decimal places to match the generated diagnostic context payload.
 
 ## Gap handling
 

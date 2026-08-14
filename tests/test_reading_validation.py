@@ -59,6 +59,34 @@ class ReadingValidationTests(unittest.TestCase):
         self.assertEqual(converted.pressure_psi, 14.5)
         self.assertEqual(converted.flow_rate_bpd, 24.0)
 
+    def test_normalizes_unit_aliases_and_formatting_variations(self):
+        validator = ReadingValidator()
+        converted = validator.validate(
+            [
+                self.reading(
+                    "source-1",
+                    oil_bbl=1,
+                    gas_mcf=1000,
+                    water_bbl=42,
+                    pressure_psi=1,
+                    flow_rate_bpd=1,
+                    units={
+                        "oil_bbl": " M^3 ",
+                        "gas_mcf": "M³",
+                        "water_bbl": " gallons ",
+                        "pressure_psi": "kiloPascals",
+                        "flow_rate_bpd": "m3d",
+                    },
+                )
+            ]
+        )[0]
+
+        self.assertEqual(converted.oil_bbl, 6.29)
+        self.assertEqual(converted.gas_mcf, 35.31)
+        self.assertEqual(converted.water_bbl, 1.0)
+        self.assertEqual(converted.pressure_psi, 0.15)
+        self.assertEqual(converted.flow_rate_bpd, 6.29)
+
     def test_flags_gaps_without_dropping_the_reading(self):
         validator = ReadingValidator()
         readings = validator.validate(
