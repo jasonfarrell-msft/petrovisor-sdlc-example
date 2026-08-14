@@ -62,8 +62,12 @@ def load_review(path, persona):
             if start < 0:
                 raise
             data, end = json.JSONDecoder().raw_decode(content[start:])
-            if content[start + end:].strip():
-                raise ValueError("unexpected content after review JSON")
+            remaining = content[start + end:].strip()
+            # The CLI may append unstructured usage/footer text. A second JSON-like
+            # payload is not accepted, so only the single validated object controls
+            # the review verdict.
+            if remaining and any(character in remaining for character in "{["):
+                raise ValueError("unexpected structured content after review JSON")
         if not isinstance(data, dict):
             raise ValueError("review JSON must be an object")
         if data.get("verdict") not in ("APPROVE", "REQUEST_CHANGES"):
