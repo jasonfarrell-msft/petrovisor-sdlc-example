@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Posts a single automated persona's review verdict as a real GitHub PR review
-(APPROVE or REQUEST_CHANGES), with inline comments for each finding.
+Posts a single automated persona's review verdict as a non-approving GitHub PR
+comment review, with inline comments for each finding. The workflow status
+remains the merge gate; a human makes the final approval decision.
 
 Reads a JSON file produced by a Copilot CLI persona review step with this shape:
 {
@@ -79,7 +80,9 @@ def main():
     review = load_review(args.input, args.persona)
 
     verdict = review["verdict"]
-    event = "APPROVE" if verdict == "APPROVE" else "REQUEST_CHANGES"
+    # GitHub Actions cannot submit approving or change-request reviews.
+    # The workflow check remains the merge gate; the review itself is informational.
+    event = "COMMENT"
 
     findings = review.get("findings", []) or []
     body_lines = [
@@ -138,9 +141,8 @@ def main():
 
     print(f"Posted {event} review for persona '{args.persona}' on PR #{args.pr}.")
 
-    # Fail the workflow job itself on REQUEST_CHANGES so this becomes a required,
-    # non-bypassable status check in branch protection (a posted review alone is
-    # not sufficient to block a merge).
+    # Fail the required workflow check on blocking findings. A human must make
+    # the final merge decision after all persona comments and checks are visible.
     if verdict == "REQUEST_CHANGES":
         print(f"{args.persona} requested changes; failing this check.", file=sys.stderr)
         sys.exit(1)
