@@ -33,6 +33,22 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -e
+          changed_files="$(git diff --name-only --diff-filter=ACMRT \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}")"
+          if ! printf '%s\n' "$changed_files" | grep -Eq '(^|/)([^/]+\.(cs|csproj|csx|props|sln|slnx|targets)|global\.json|NuGet\.config|Directory\.(Build|Packages)\.(props|targets))$'; then
+            python3 - <<'PY' > review-output.json
+          import json
+
+          print(json.dumps({
+              "verdict": "COMMENT",
+              "summary": "No C# or .NET files were changed in this pull request, so the Senior C# Developer review was skipped.",
+              "findings": [],
+          }))
+          PY
+            exit 0
+          fi
+
           copilot --prompt "$(cat <<'PROMPT'
           You are acting as a Senior C# Developer reviewing this pull request (PR #${PR_NUMBER}) for a .NET solution.
           Review the full diff for: idiomatic C# usage, async/await correctness, null-safety, exception handling,
