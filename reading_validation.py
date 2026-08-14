@@ -37,6 +37,13 @@ class ReadingValidator:
         "pressure_psi": {"psi": 1.0, "kpa": 0.145037738, "bar": 14.5037738},
         "flow_rate_bpd": {"bpd": 1.0, "bph": 24.0, "m3/day": 6.28981077},
     }
+    UNIT_ALIASES = {
+        "oil_bbl": {"barrel": "bbl", "barrels": "bbl", "m^3": "m3"},
+        "gas_mcf": {"mscf": "mcf", "m^3": "m3"},
+        "water_bbl": {"barrel": "bbl", "barrels": "bbl", "gallon": "gal", "gallons": "gal", "m^3": "m3"},
+        "pressure_psi": {"kilopascal": "kpa", "kilopascals": "kpa"},
+        "flow_rate_bpd": {"bbl/day": "bpd", "bbl/hr": "bph", "m3d": "m3/day", "m^3/day": "m3/day"},
+    }
     OUTLIER_RULES = {
         "oil_bbl": (0.5, "OIL_OUTLIER"),
         "gas_mcf": (0.5, "GAS_OUTLIER"),
@@ -92,7 +99,7 @@ class ReadingValidator:
         valid_units = True
         for metric, conversions in self.UNIT_CONVERSIONS.items():
             value = getattr(incoming.reading, metric)
-            unit = incoming.units.get(metric, "").lower()
+            unit = self._normalize_unit(metric, incoming.units.get(metric))
             factor = conversions.get(unit)
             if factor is None:
                 valid_units = False
@@ -123,6 +130,11 @@ class ReadingValidator:
             ),
             valid_units,
         )
+
+    def _normalize_unit(self, metric: str, unit: object) -> str:
+        normalized = str(unit).strip().lower().replace(" ", "") if unit is not None else ""
+        normalized = normalized.replace("³", "3")
+        return self.UNIT_ALIASES.get(metric, {}).get(normalized, normalized)
 
     def _validate_outliers(
         self,
