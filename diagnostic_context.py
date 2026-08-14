@@ -291,11 +291,14 @@ class SyntheticDataFactory:
 
         for idx in range(count):
             timestamp = start_time + timedelta(hours=idx * 6)
+            oil_bbl = base_oil * (1 - (idx * 0.03))
+            if well_id == "WELL-101" and idx >= 4:
+                oil_bbl *= 0.82
             readings.append(
                 ProductionReading(
                     well_id=well_id,
                     timestamp=timestamp,
-                    oil_bbl=round(base_oil * (1 - (idx * 0.03)), 2),
+                    oil_bbl=round(oil_bbl, 2),
                     gas_mcf=round(base_gas * (1 - (idx * 0.02)), 2),
                     water_bbl=round(base_water * (1 + (idx * 0.05)), 2),
                     pressure_psi=round(base_pressure * (1 - (idx * 0.015)), 2),

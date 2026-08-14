@@ -38,6 +38,12 @@ class DiagnosticContextTests(unittest.TestCase):
         self.assertGreater(urgent[0].water_bbl, underperforming[0].water_bbl)
         self.assertIn("Urgent profile", MissionControl.scenario_summary(TelemetryProfile.IMMEDIATE_ACTION))
 
+    def test_seeded_well_101_deviates_from_expected_oil_decline(self):
+        well_readings = [reading for reading in self.readings if reading.well_id == "WELL-101"]
+        expected_final_oil = well_readings[0].oil_bbl * (1 - (0.03 * (len(well_readings) - 1)))
+
+        self.assertLess(well_readings[-1].oil_bbl, expected_final_oil * 0.85)
+
     def test_context_round_trip_schema(self):
         context = self.assembler.assemble("EVT-9001", telemetry_profile=TelemetryProfile.UNDERPERFORMING)
         payload = context.to_dict()
