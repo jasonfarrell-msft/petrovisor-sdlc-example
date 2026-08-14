@@ -80,9 +80,7 @@ def main():
     review = load_review(args.input, args.persona)
 
     verdict = review["verdict"]
-    # GitHub Actions cannot submit approving or change-request reviews.
-    # The workflow check remains the merge gate; the review itself is informational.
-    event = "COMMENT"
+    event = verdict
 
     findings = review.get("findings", []) or []
     body_lines = [
@@ -103,6 +101,15 @@ def main():
     body = "\n".join(body_lines)
 
     base_url = f"https://api.github.com/repos/{args.repo}/pulls/{args.pr}"
+
+    # Fetch the PR to get the head commit, required by the Create Review API
+    # when submitting inline `comments`.
+    commit_id = None
+    try:
+        pr_info = gh_api("GET", base_url, token)
+        commit_id = pr_info.get("head", {}).get("sha")
+    except Exception as e:
+        print(f"Warning: could not fetch PR head commit: {e}", file=sys.stderr)
 
     # Fetch the diff to know which files/lines are eligible for inline comments.
     diff_files = {}
@@ -131,13 +138,23 @@ def main():
     }
     if comments:
         payload["comments"] = comments
+        if commit_id:
+            payload["commit_id"] = commit_id
 
     try:
         gh_api("POST", f"{base_url}/reviews", token, payload)
     except urllib.error.HTTPError:
         # Inline comments can fail if a line isn't part of the diff hunk; retry without them.
         print("Retrying review submission without inline comments...", file=sys.stderr)
-        gh_api("POST", f"{base_url}/reviews", token, {"body": body, "event": event})
+        try:
+            gh_api("POST", f"{base_url}/reviews", token, {"body": body, "event": event})
+        except urllib.error.HTTPError:
+            # The token may not be permitted to submit an APPROVE/REQUEST_CHANGES
+            # review (e.g. GITHUB_TOKEN cannot approve/request changes on its own
+            # PR). Fall back to a plain comment review so the summary is still posted.
+            print("Retrying review submission as a COMMENT review...", file=sys.stderr)
+            event = "COMMENT"
+            gh_api("POST", f"{base_url}/reviews", token, {"body": body, "event": event})
 
     print(f"Posted {event} review for persona '{args.persona}' on PR #{args.pr}.")
 

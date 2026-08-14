@@ -45,12 +45,13 @@ jobs:
 
           Output your result as a single JSON object, and nothing else, matching exactly this schema:
           {
-            "verdict": "APPROVE" | "REQUEST_CHANGES",
+            "verdict": "APPROVE",
             "summary": "one paragraph overall assessment",
             "findings": [
-              {"file": "path/to/file", "line": 0, "severity": "blocking"|"warning"|"info", "comment": "explanation and suggested fix"}
+              {"file": "path/to/file", "line": 0, "severity": "blocking", "comment": "explanation and suggested fix"}
             ]
           }
+          "verdict" must be either "APPROVE" or "REQUEST_CHANGES". "severity" must be one of "blocking", "warning", or "info".
           Use REQUEST_CHANGES if there is at least one "blocking" finding (e.g., deprecated API, no managed identity, public endpoint
           on a data service, hardcoded secret). Write the JSON to review-output.json.
           PROMPT
