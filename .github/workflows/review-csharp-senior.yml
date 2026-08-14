@@ -56,7 +56,7 @@ jobs:
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.event.pull_request.head.sha }}"
           printf '%s\n' '--- END UNTRUSTED DIFF ---'
-          )" -s --max-ai-credits 40 > review-output.json
+          )" -s --available-tools= --max-ai-credits 40 > review-output.json
 
       - name: Post review to PR
         if: always()
